@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Skill Map</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/quiz.js"></script>
+</head>
+<body>
+<main>
+<h1>The skill map</h1>
+<p class="subtitle">Lesson 1 · ~10 minutes · Goal: route any situation to the right skill, including the six new ones.</p>
+
+<h2>Recall first</h2>
+<div class="box no-print">
+<p>Before reading, write down the <strong>main flow</strong> from memory: which skills, in which order, take an idea to shipped code? Guessing is fine. Effortful recall is what makes it stick.</p>
+<textarea placeholder="/grill-with-docs → …"></textarea>
+<details><summary>Check against the answer</summary>
+<p><code>/grill-with-docs</code> → (optional <code>/prototype</code> detour) → <code>/to-spec</code> → <code>/to-tickets</code> → <code>/implement</code> <em>or</em> <code>/implement-spec</code> (both drive <code>/tdd</code> and finish with <code>/code-review</code>) → <code>/pr</code> → <code>/retro</code>.</p>
+</details>
+</div>
+
+<h2>The shape of the set</h2>
+<p>Matt's router, <code>ask-matt</code>, organises every skill as one <strong>main flow</strong>, three <strong>on-ramps</strong> that feed into it, and a set of <strong>standalone</strong> tools.<a class="cite" href="https://aihero.dev/skills-ask-matt">[1]</a></p>
+
+<ol class="flow">
+<li><code>/grill-with-docs</code>: sharpen the idea. In a repo, always prefer it over <code>/grill-me</code>; it leaves a <code>GLOSSARY.md</code> and ADRs behind.</li>
+<li>Can't settle a question on paper? <code>/handoff</code> → <code>/prototype</code> → <code>/handoff</code> back.</li>
+<li>Multi-session? <code>/to-spec</code> → <code>/to-tickets</code>, then build. Keep steps 1–3 in <em>one</em> context window.</li>
+<li>Build with <code>/implement</code> (one ticket, <code>/clear</code> between) or <code>/implement-spec</code> <span class="new">new</span> (the whole spec in parallel).</li>
+<li><code>/pr</code> <span class="new">new</span> shapes the PR body; <code>/retro</code> <span class="new">new</span> improves the environment for next time.</li>
+</ol>
+
+<p>On-ramps: <code>/triage</code> (issues you didn't write), <code>/diagnosing-bugs</code> (something's broken), <code>/wayfinder</code> (too big and foggy for one session).</p>
+
+<h2>What's new for a regular user</h2>
+<h3><code>/implement-spec</code> vs <code>/implement</code></h3>
+<p><code>/implement</code> builds one ticket, and you drive. <code>/implement-spec</code> reads all tickets as a <strong>task graph</strong>, runs implementer subagents in their own worktrees across the ready <strong>frontier</strong>, and merges into one <strong>integration branch</strong>, with a single <code>/code-review</code> at the end.<a class="cite" href="https://aihero.dev/skills-implement-spec">[2]</a></p>
+
+<h3><code>/retro</code></h3>
+<p>Fixes the <em>environment</em>, not the code. A mechanical mistake becomes a deterministic check (linter, pre-commit hook, CI). A judgement call becomes a coding standard. Run it <em>before</em> you <code>/clear</code>.<a class="cite" href="https://aihero.dev/skills-retro">[3]</a></p>
+
+<h3><code>/pr</code>, <code>/wizard</code>: model-invoked</h3>
+<p>You rarely type these. The agent reaches for <code>/pr</code> whenever it writes a PR, and for <code>/wizard</code> when it hits a step only a human can do (secrets, dashboards).<a class="cite" href="https://github.com/mattpocock/skills/blob/main/docs/engineering/wizard.md">[4]</a></p>
+
+<h3><code>/to-questionnaire</code>, <code>/wait-what</code></h3>
+<p><code>/to-questionnaire</code> is the inverse of <code>/grill-me</code>: the answer is in someone else's head, so it grills you about <em>who</em> it's for and <em>what</em> you need back.<a class="cite" href="https://aihero.dev/skills-to-questionnaire">[5]</a> <code>/wait-what</code> repairs one confusing message; a glossary built early prevents the next one.<a class="cite" href="https://aihero.dev/skills-wait-what">[6]</a></p>
+
+<div class="box">
+<p><strong>Check your repos.</strong> Skills now read <code>GLOSSARY.md</code>, not <code>CONTEXT.md</code>. <code>resolving-merge-conflicts</code> is gone, and <code>writing-great-skills</code> is now <code>writing-for-agents</code>.<a class="cite" href="https://github.com/mattpocock/skills/blob/main/CHANGELOG.md">[7]</a></p>
+</div>
+
+<h2>Practice: which skill?</h2>
+<div class="quiz" id="q"></div>
+<script>
+Quiz.mount('q', [
+  { q: 'A build went sideways. You want the agent to not repeat that mistake in future sessions.',
+    options: ['/retro', '/handoff', '/code-review', '/wait-what'], answer: 0,
+    why: '/retro changes the environment (checks, standards, pointers). /code-review only judges this diff.' },
+  { q: 'A spec is split into six tickets. You want them built in parallel and landed on one branch.',
+    options: ['/implement', '/to-tickets', '/implement-spec', '/wayfinder'], answer: 2,
+    why: '/implement-spec runs subagents across the ticket graph onto one integration branch.' },
+  { q: 'The agent\'s last reply is full of terms you don\'t follow.',
+    options: ['/grill-me', '/wait-what', '/domain-modeling', '/teach'], answer: 1,
+    why: '/wait-what re-pitches that one message in plain English using your GLOSSARY.md.' },
+  { q: 'You are blocked on a decision only your board supplier can answer.',
+    options: ['/grill-me', '/research', '/triage', '/to-questionnaire'], answer: 3,
+    why: '/to-questionnaire writes them a questionnaire, aimed at what you need back.' },
+  { q: 'Setup needs you to click through a cloud dashboard and paste three secrets into CI.',
+    options: ['/wizard', '/handoff', '/prototype', '/implement'], answer: 0,
+    why: '/wizard generates a bash script for steps only a human can take.' },
+  { q: 'You want to sharpen an idea for your FreeRTOS notes, inside the repo, and keep the terms you agree on.',
+    options: ['/grill-me', '/grilling', '/grill-with-docs', '/to-spec'], answer: 2,
+    why: 'In a working directory, /grill-with-docs is strictly better: same interview, plus GLOSSARY.md and ADRs.' },
+  { q: 'A new firmware project is too big and foggy to plan in one session.',
+    options: ['/to-spec', '/wayfinder', '/research', '/implement-spec'], answer: 1,
+    why: '/wayfinder charts decision tickets, then hands off to /to-spec when the fog clears.' },
+  { q: 'An older repo has CONTEXT.md, and the skills ignore it. What do you do?',
+    options: ['Rerun the setup', 'Add a pointer', 'Run domain-modeling first', 'Rename it GLOSSARY.md'], answer: 3,
+    why: 'Since 1.3.0 the skills only look for GLOSSARY.md. git mv it.' }
+]);
+</script>
+
+<hr>
+<h2>Read this next</h2>
+<p><strong>Primary source:</strong> Matt's own router, <a href="https://aihero.dev/skills-ask-matt">ask-matt</a> (also installed locally at <code>skills/engineering/ask-matt/SKILL.md</code>). Read the <em>Phase boundaries</em> section: it's the part most regular users skip.</p>
+<p><strong>Keep:</strong> the one-page <a href="../reference/skill-map.html">skill map</a> reference.</p>
+
+<div class="box">
+<p><strong>Questions?</strong> Ask me in the chat. Anything unclear, or a real situation where you're not sure which skill fits, is a good next step. Also tell me which of the new skills you've <em>already</em> used, so the next lesson skips them.</p>
+</div>
+
+<p class="footer">[1] aihero.dev/skills-ask-matt · [2] aihero.dev/skills-implement-spec · [3] aihero.dev/skills-retro · [4] docs/engineering/wizard.md · [5] aihero.dev/skills-to-questionnaire · [6] aihero.dev/skills-wait-what · [7] CHANGELOG 1.3.0</p>
+</main>
+</body>
+</html>

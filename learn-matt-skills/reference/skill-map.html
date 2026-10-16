@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Skill Map</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main>
+<h1>Skill map</h1>
+<p class="subtitle">mattpocock-skills v1.3.1, one line per skill. <span class="new">new</span> = added to the plugin in 1.2–1.3.</p>
+
+<p><strong>U</strong> = user-invoked (you type it). <strong>M</strong> = model-invoked (the agent may reach for it on its own). A user-invoked skill can call model-invoked ones, never another user-invoked one.<a class="cite" href="https://github.com/mattpocock/skills#reference">[readme]</a></p>
+
+<h2>Main flow: idea → ship</h2>
+<table>
+<tr><th>Skill</th><th></th><th>Reach for it when…</th></tr>
+<tr><td><code>/grill-with-docs</code></td><td>U</td><td>Sharpening an idea <em>in a repo</em>. Leaves <code>GLOSSARY.md</code> + ADRs.</td></tr>
+<tr><td><code>/handoff</code></td><td>U</td><td>Moving work to a new directory, harness or colleague (e.g. a prototype detour).</td></tr>
+<tr><td><code>/prototype</code></td><td>M</td><td>A question needs a runnable answer. Kept on a <code>prototype/&lt;name&gt;</code> branch.</td></tr>
+<tr><td><code>/to-spec</code></td><td>U</td><td>Multi-session build: turn the thread into a spec.</td></tr>
+<tr><td><code>/to-tickets</code></td><td>U</td><td>Split a spec into tracer-bullet tickets with blocking edges.</td></tr>
+<tr><td><code>/implement</code></td><td>U</td><td>Build one ticket (or small work right here). <code>/clear</code> between tickets.</td></tr>
+<tr><td><code>/implement-spec</code> <span class="new">new</span></td><td>U</td><td>Build a whole spec at once: parallel subagents over the ticket graph, one integration branch.</td></tr>
+<tr><td><code>/tdd</code></td><td>M</td><td>Red-green-refactor, one vertical slice at a time.</td></tr>
+<tr><td><code>/code-review</code></td><td>M</td><td>Review diff since a fixed point on two axes: Standards + Spec.</td></tr>
+<tr><td><code>/pr</code> <span class="new">new</span></td><td>M</td><td>Writing a PR body: smallest visual, before/after evidence, one-way/two-way door.</td></tr>
+<tr><td><code>/retro</code> <span class="new">new</span></td><td>U</td><td>After a build: fix the agent's <em>environment</em> (checks, standards, pointers), not the code.</td></tr>
+</table>
+
+<h2>On-ramps</h2>
+<table>
+<tr><td><code>/triage</code></td><td>U</td><td>Issues you <em>didn't</em> write are piling up. (Not configured in the notes repo.)</td></tr>
+<tr><td><code>/diagnosing-bugs</code></td><td>M</td><td>Hard bug: first build one command that goes red on <em>this</em> bug.</td></tr>
+<tr><td><code>/wayfinder</code></td><td>U</td><td>Huge, foggy effort. Map of <em>decision tickets</em>; hands off to <code>/to-spec</code>.</td></tr>
+</table>
+
+<h2>Upkeep &amp; vocabulary</h2>
+<table>
+<tr><td><code>/improve-codebase-architecture</code></td><td>U</td><td>Spare moment: survey for deepening opportunities.</td></tr>
+<tr><td><code>/codebase-design</code></td><td>M</td><td>Designing a module's shape: deep module, seam, interface.</td></tr>
+<tr><td><code>/domain-modeling</code></td><td>M</td><td>The <em>words</em> are the problem. Edits <code>GLOSSARY.md</code> / ADRs.</td></tr>
+</table>
+
+<h2>Standalone</h2>
+<table>
+<tr><td><code>/grill-me</code></td><td>U</td><td>Grilling with <em>no</em> repo. Saves nothing.</td></tr>
+<tr><td><code>/grilling</code></td><td>M</td><td>The raw interview primitive under all grill-style skills.</td></tr>
+<tr><td><code>/research</code></td><td>M</td><td>Background agent reads primary sources, writes a cited Markdown file.</td></tr>
+<tr><td><code>/to-questionnaire</code> <span class="new">new</span></td><td>U</td><td>The answer is in <em>someone else's</em> head. Grills you about the send.</td></tr>
+<tr><td><code>/wizard</code> <span class="new">new</span></td><td>M</td><td>Steps only a human can do: secrets, dashboards, cutovers. Generates a bash script.</td></tr>
+<tr><td><code>/wait-what</code> <span class="new">new</span></td><td>U</td><td>The last message didn't land. Re-pitch in plain English.</td></tr>
+<tr><td><code>/teach</code></td><td>U</td><td>Learn something over many sessions (this workspace).</td></tr>
+<tr><td><code>/writing-for-agents</code></td><td>M</td><td>Writing skills, AGENTS.md/CLAUDE.md, pointed-at docs. (Renamed from <code>writing-great-skills</code>.)</td></tr>
+<tr><td><code>/ask-matt</code></td><td>U</td><td>Not sure which skill. Ask the router.</td></tr>
+<tr><td><code>/setup-matt-pocock-skills</code></td><td>U</td><td>Once per repo, before engineering flows.</td></tr>
+</table>
+
+<h2>Breaking changes</h2>
+<ul>
+<li><code>CONTEXT.md</code> → <code>GLOSSARY.md</code> (and <code>CONTEXT-MAP.md</code> → <code>GLOSSARY-MAP.md</code>). Old names are ignored: <code>git mv</code> them.<a class="cite" href="https://github.com/mattpocock/skills/blob/main/CHANGELOG.md">[changelog 1.3.0]</a></li>
+<li><code>resolving-merge-conflicts</code> removed. No replacement.</li>
+<li><code>writing-great-skills</code> → <code>writing-for-agents</code>, no alias.</li>
+</ul>
+
+<h2>Phase boundaries (in order to consider)</h2>
+<p>Continue → <code>/clear</code> → <code>/handoff</code> (new harness/dir/person only) → subagent → <code>/compact</code> (the default).<a class="cite" href="https://aihero.dev/skills-ask-matt">[ask-matt]</a></p>
+
+<p class="footer">Source: <code>ask-matt/SKILL.md</code> and <code>CHANGELOG.md</code> in the installed plugin. Lessons: <a href="../lessons/0001-the-skill-map.html">0001 The skill map</a>.</p>
+</main>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Standalone Trio</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main>
+<h1>Standalone trio</h1>
+<p class="subtitle"><code>/wait-what</code> · <code>/wizard</code> · <code>/to-questionnaire</code>, on one page.</p>
+
+<h2>Where is the blocker?</h2>
+<table>
+<tr><th>Blocker</th><th>Skill</th><th>Invoked by</th><th>Output</th></tr>
+<tr><td>The agent lost you</td><td><code>/wait-what</code></td><td>You only</td><td>A re-pitch, in chat</td></tr>
+<tr><td>Only a human can click / plug in</td><td><code>/wizard</code></td><td>You or the agent</td><td>A bash script you run</td></tr>
+<tr><td>Someone else knows</td><td><code>/to-questionnaire</code></td><td>You only</td><td><code>to-questionnaire-&lt;slug&gt;.md</code></td></tr>
+<tr><td>You know, but fuzzily</td><td><code>/grill-with-docs</code> (repo) / <code>/grill-me</code></td><td>You</td><td>Decisions (+ glossary)</td></tr>
+<tr><td>Nobody knows yet</td><td><code>/prototype</code></td><td>You or the agent</td><td>Something to react to</td></tr>
+</table>
+
+<h2><code>/wait-what</code></h2>
+<ul>
+<li>Re-pitch with context, Simplified Technical English, <code>GLOSSARY.md</code> words.</li>
+<li>Good result = shorter <em>and</em> clearer, adds the missing premise. Bad = just blunter.</li>
+<li>Prevention: <code>/grill-with-docs</code> builds the glossary upfront.</li>
+</ul>
+
+<h2><code>/wizard</code></h2>
+<ul>
+<li>Scope → map clicks → author stages in <code>template.sh</code> → verify statically. You run it.</li>
+<li>Helpers: <code>stage</code> <code>say</code> <code>step</code> <code>open_url</code> <code>ask</code> <code>ask_secret</code> <code>write_env</code> <code>set_secret</code> <code>set_var</code> <code>confirm</code> <code>pause</code>.</li>
+<li>Value destinations:</li>
+</ul>
+<table>
+<tr><td><code>.env</code> only</td><td>local dev needs it, CI doesn't</td></tr>
+<tr><td>GitHub secret</td><td>CI needs it, sensitive</td></tr>
+<tr><td>GitHub variable</td><td>CI needs it, public</td></tr>
+<tr><td>both</td><td>local + CI</td></tr>
+<tr><td>nowhere</td><td>pure action (jumper, switch, plan upgrade)</td></tr>
+</table>
+<ul>
+<li><code>confirm</code> before anything irreversible. One screen per stage.</li>
+<li>No back button: Ctrl-C, re-run, saved values return as defaults.</li>
+<li>Ephemeral unless the next person needs it.</li>
+</ul>
+
+<h2><code>/to-questionnaire</code></h2>
+<ul>
+<li>Asks only: <strong>who</strong> is it for? <strong>what</strong> do you need back? Never the subject.</li>
+<li>Doc: purpose · from/to · context · how to answer · themed questions (most-important-first, one idea each, answer stub) · anything else?</li>
+<li>One recipient per run. Flat, not branching. Doesn't send.</li>
+<li>Run in the same conversation as a stalled grilling; feed answers back to <code>/grill-with-docs</code> or <code>/to-spec</code>.</li>
+</ul>
+
+<p class="footer">Sources: the three SKILL.md files and docs pages in mattpocock-skills v1.3.1. Lesson: <a href="../lessons/0002-wait-what-wizard-questionnaire.html">0002 Three small tools</a>.</p>
+</main>
+</body>
+</html>

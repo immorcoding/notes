@@ -1,0 +1,88 @@
+/* Shared stylesheet for every lesson and reference page. */
+:root {
+  --bg: #fffff8;
+  --fg: #1d1d1b;
+  --muted: #6b6b66;
+  --rule: #ddd9cc;
+  --accent: #a33b20;
+  --panel: #f4f1e6;
+  --good: #2f6b3a;
+  --bad: #a33b20;
+  --new: #2d5d8a;
+  --mono: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #161614;
+    --fg: #e8e6df;
+    --muted: #9b998f;
+    --rule: #3a3933;
+    --accent: #e0805f;
+    --panel: #22221e;
+    --good: #7dc48a;
+    --bad: #e0805f;
+    --new: #7fb2e0;
+  }
+}
+
+* { box-sizing: border-box; }
+html { font-size: 18px; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+  line-height: 1.6;
+}
+main { max-width: 42rem; margin: 0 auto; padding: 3rem 1rem 5rem; }
+
+h1 { font-weight: 400; font-size: 2.1rem; line-height: 1.2; margin: 0 0 .4rem; }
+h2 { font-weight: 400; font-style: italic; font-size: 1.45rem; margin: 2.6rem 0 .6rem; }
+h3 { font-weight: 600; font-size: 1rem; margin: 1.6rem 0 .3rem; }
+.subtitle { color: var(--muted); font-style: italic; margin: 0 0 2rem; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: .85em; background: var(--panel); padding: .05em .3em; border-radius: 3px; }
+hr { border: 0; border-top: 1px solid var(--rule); margin: 2.5rem 0; }
+.cite { font-size: .75em; vertical-align: super; }
+
+.box { background: var(--panel); border-left: 3px solid var(--accent); padding: .8rem 1rem; margin: 1.2rem 0; }
+.box > :first-child { margin-top: 0; }
+.box > :last-child { margin-bottom: 0; }
+
+.new {
+  font-family: var(--mono); font-size: .62rem; letter-spacing: .05em; text-transform: uppercase;
+  color: var(--new); border: 1px solid var(--new); border-radius: 3px; padding: 0 .3em; vertical-align: middle;
+}
+
+/* Flow diagram: numbered steps. */
+ol.flow { counter-reset: s; list-style: none; padding: 0; }
+ol.flow > li { counter-increment: s; position: relative; padding: 0 0 .9rem 2.4rem; border-left: 1px solid var(--rule); margin-left: .8rem; }
+ol.flow > li::before {
+  content: counter(s); position: absolute; left: -.8rem; top: 0; width: 1.6rem; height: 1.6rem;
+  border-radius: 50%; background: var(--bg); border: 1px solid var(--accent); color: var(--accent);
+  font-size: .8rem; text-align: center; line-height: 1.5rem;
+}
+ol.flow > li:last-child { border-left-color: transparent; }
+
+table { border-collapse: collapse; width: 100%; font-size: .9rem; margin: 1rem 0; }
+th, td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 600; }
+
+textarea {
+  width: 100%; min-height: 6rem; font: inherit; font-size: .9rem; color: var(--fg);
+  background: var(--bg); border: 1px solid var(--rule); padding: .5rem;
+}
+button {
+  font: inherit; font-size: .9rem; color: var(--fg); background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 4px; padding: .3rem .8rem; cursor: pointer;
+}
+button:hover { border-color: var(--accent); }
+details > summary { cursor: pointer; color: var(--accent); }
+
+.footer { color: var(--muted); font-size: .85rem; }
+
+@media print {
+  body { background: #fff; color: #000; }
+  .quiz, .no-print { display: none; }
+  a { color: #000; }
+}

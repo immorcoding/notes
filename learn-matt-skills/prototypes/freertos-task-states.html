@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · FreeRTOS Task States</title>
+<style>
+  :root { --bg:#fbfaf6; --fg:#1d1d1b; --muted:#6b6b66; --rule:#ddd9cc; --panel:#f2efe6; --accent:#a33b20; --chg:#fbe6c8; --mono:ui-monospace,"Cascadia Code",Consolas,monospace; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161614; --fg:#e8e6df; --muted:#9b998f; --rule:#3a3933; --panel:#22221e; --accent:#e0805f; --chg:#4a3a1f; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,"Segoe UI",sans-serif; }
+  main { max-width:62rem; margin:0 auto; padding:2rem 1rem 4rem; }
+  h1 { font-weight:500; margin:0 0 .3rem; font-size:1.6rem; }
+  h2 { font-weight:500; font-size:1.1rem; margin:2rem 0 .6rem; border-bottom:1px solid var(--rule); padding-bottom:.2rem; }
+  .q { color:var(--muted); margin:0 0 1rem; max-width:48rem; }
+  .tag { font:600 .7rem var(--mono); color:var(--accent); border:1px solid var(--accent); border-radius:3px; padding:0 .35em; vertical-align:middle; }
+  code, .mono { font-family:var(--mono); font-size:.85em; }
+  .row { display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin:.4rem 0; }
+  button { font:inherit; font-size:.85rem; font-family:var(--mono); color:var(--fg); background:var(--bg); border:1px solid var(--rule); border-radius:4px; padding:.3rem .6rem; cursor:pointer; }
+  button:hover:not(:disabled) { border-color:var(--accent); }
+  button:disabled { opacity:.4; cursor:not-allowed; }
+  button.on { border-color:var(--accent); color:var(--accent); }
+  select { font:inherit; font-size:.85rem; padding:.25rem; background:var(--bg); color:var(--fg); border:1px solid var(--rule); }
+  .stats { display:flex; gap:2rem; margin:.5rem 0; }
+  .stats div span { display:block; font-size:.75rem; color:var(--muted); }
+  .stats div strong { font:500 1.3rem var(--mono); }
+  table { border-collapse:collapse; width:100%; font-size:.88rem; }
+  th, td { text-align:left; padding:.35rem .5rem; border-bottom:1px solid var(--rule); }
+  th { font-weight:500; color:var(--muted); font-size:.78rem; }
+  tr.changed td { background:var(--chg); }
+  td.state { font-weight:600; }
+  .log { background:var(--panel); padding:.6rem .9rem; border-left:3px solid var(--accent); font-size:.9rem; min-height:2.5rem; }
+  .log p { margin:.15rem 0; }
+  .label { font-size:.8rem; color:var(--muted); min-width:9rem; }
+  .tabs { display:flex; flex-wrap:wrap; gap:.3rem; }
+  .scenario { background:var(--panel); padding:.8rem 1rem; margin-top:.6rem; }
+  .scenario p { margin:.2rem 0 .6rem; }
+  .steps button { display:block; margin:.3rem 0; text-align:left; }
+  .steps button.done { text-decoration:line-through; opacity:.55; }
+  .note { font-size:.8rem; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<h1>FreeRTOS task states <span class="tag">PROTOTYPE · throwaway</span></h1>
+<p class="q"><strong>Question:</strong> do task states change the way I think they do in the awkward cases: an ISR waking a task, time slicing, suspending a task while it waits, resuming a blocked task, self-delete, and my project's <code>INCLUDE_vTaskSuspend = 0</code>?</p>
+<p class="note">Model: single core, <code>configUSE_PREEMPTION 1</code>, <code>configUSE_TIME_SLICING 1</code>, notification index 0, <code>ulTaskNotifyTake(pdTRUE, …)</code>. Round-robin is simplified: a task that leaves Running goes to the back of its priority's ready list.</p>
+
+<div class="row">
+  <span class="label">INCLUDE_vTaskSuspend</span>
+  <button id="cfg0">0 · your FreeRTOSConfig.h</button>
+  <button id="cfg1">1 · common default in demos</button>
+  <span class="note">Changing this resets the demo.</span>
+</div>
+
+<h2>Current state</h2>
+<div class="stats">
+  <div><span>xTickCount</span><strong id="tick"></strong></div>
+  <div><span>pxCurrentTCB (Running)</span><strong id="cur"></strong></div>
+</div>
+<table>
+  <thead><tr><th>Task</th><th>Prio</th><th>State (eTaskGetState)</th><th>Kernel list</th><th>Wakes at tick</th><th>Notify value</th><th>Last API result</th></tr></thead>
+  <tbody id="tasks"></tbody>
+</table>
+<h2>What just happened</h2>
+<div class="log" id="log"></div>
+
+<h2>Free play</h2>
+<div class="row"><span class="label">Kernel</span>
+  <button data-act='{"type":"tick"}'>SysTick: xTaskIncrementTick()</button>
+  <button id="reset">Reset</button>
+</div>
+<div class="row"><span class="label">Running task calls</span>
+  <button data-run='{"type":"delay","ticks":2}'>vTaskDelay(2)</button>
+  <button data-run='{"type":"delay","ticks":5}'>vTaskDelay(5)</button>
+  <button data-run='{"type":"take","timeout":"MAX"}'>ulTaskNotifyTake(pdTRUE, portMAX_DELAY)</button>
+  <button data-run='{"type":"take","timeout":3}'>ulTaskNotifyTake(pdTRUE, 3)</button>
+  <button data-run='{"type":"yield"}'>taskYIELD()</button>
+  <button data-run='{"type":"delete","target":"SELF"}'>vTaskDelete(NULL)</button>
+</div>
+<div class="row"><span class="label">On task</span>
+  <select id="target"></select>
+  <button data-tgt='{"type":"give","isr":false}'>xTaskNotifyGive()</button>
+  <button data-tgt='{"type":"give","isr":true}'>vTaskNotifyGiveFromISR()</button>
+  <button data-tgt='{"type":"suspend"}' class="needs-susp">vTaskSuspend()</button>
+  <button data-tgt='{"type":"resume"}' class="needs-susp">vTaskResume()</button>
+  <button data-tgt='{"type":"delete"}'>vTaskDelete()</button>
+</div>
+
+<h2>Guided walkthroughs</h2>
+<div class="tabs" id="tabs"></div>
+<div class="scenario" id="scenario"></div>
+
+<p class="note" style="margin-top:2rem">Behaviour checked against <code>freertos/sourcecode/FreeRTOS/Source/tasks.c</code> in this repo: <code>vTaskSuspend</code>, <code>prvTaskIsTaskSuspended</code>, <code>ulTaskGenericNotifyTake</code>, <code>prvAddCurrentTaskToDelayedList</code>.</p>
+</main>
+
+<script>
+// ───────────── Pure logic module: no DOM. The transition rules are the part worth keeping. ─────────────
+const Kernel = (() => {
+  const MAX_DELAY = 0xFFFFFFFF;
+  const TASKS = [['Button', 3], ['Audio', 2], ['Display', 2], ['Logger', 1], ['Idle', 0]];
+
+  function init(includeSuspend) {
+    const s = { tick: 0, current: null, includeSuspend, tasks: {}, ready: [[], [], [], [], []], log: [], changed: [] };
+    for (const [name, prio] of TASKS) {
+      s.tasks[name] = { name, prio, state: 'Ready', waiting: null, wake: null, indefinite: false, value: 0, inTake: false, ret: '' };
+      s.ready[prio].push(name);
+    }
+    s.log.push('vTaskStartScheduler(): every task is Ready; the highest priority one runs.');
+    pick(s);
+    return s;
+  }
+
+  // Which kernel list holds the task's xStateListItem.
+  function listOf(t) {
+    switch (t.state) {
+      case 'Running': return `pxCurrentTCB (in pxReadyTasksLists[${t.prio}])`;
+      case 'Ready': return `pxReadyTasksLists[${t.prio}]`;
+      case 'Blocked': return t.indefinite ? 'xSuspendedTaskList (blocked, no timeout)' : 'xDelayedTaskList';
+      case 'Suspended': return 'xSuspendedTaskList';
+      case 'Deleted': return 'xTasksWaitingTermination';
+      case 'Freed': return '— (TCB and stack freed)';
+    }
+  }
+
+  const live = t => t.state !== 'Deleted' && t.state !== 'Freed';
+  const unqueue = (s, name) => { const q = s.ready[s.tasks[name].prio]; const i = q.indexOf(name); if (i >= 0) q.splice(i, 1); };
+
+  function makeReady(s, name) {
+    const t = s.tasks[name];
+    Object.assign(t, { state: 'Ready', waiting: null, wake: null, indefinite: false });
+    s.ready[t.prio].push(name);
+    s.changed.push(name);
+  }
+
+  // Put the highest-priority ready task into Running.
+  function pick(s) {
+    for (let p = s.ready.length - 1; p >= 0; p--) {
+      if (s.ready[p].length) {
+        const name = s.ready[p].shift();
+        const t = s.tasks[name];
+        t.state = 'Running';
+        s.current = name;
+        s.changed.push(name);
+        if (t.inTake) {             // returning from inside ulTaskNotifyTake: read and clear the count now
+          t.ret = `ulTaskNotifyTake → ${t.value}${t.value ? '' : ' (no notification)'}`;
+          s.log.push(`${name} continues inside ulTaskNotifyTake() and reads its count: returns ${t.value}.`);
+          t.value = 0; t.inTake = false;
+        }
+        return;
+      }
+    }
+  }
+
+  // Current task leaves Running (yield / preempted / time slice): back of its ready list.
+  function requeueCurrent(s) {
+    const t = s.tasks[s.current];
+    t.state = 'Ready';
+    s.ready[t.prio].push(t.name);
+    s.changed.push(t.name);
+  }
+
+  function preemptIfHigher(s, why) {
+    const cur = s.tasks[s.current];
+    for (let p = s.ready.length - 1; p > cur.prio; p--) {
+      if (s.ready[p].length) {
+        s.log.push(`${s.ready[p][0]} (prio ${p}) is higher than ${cur.name} (prio ${cur.prio}): ${why}.`);
+        requeueCurrent(s); pick(s); return true;
+      }
+    }
+    return false;
+  }
+
+  function blockCurrent(s, waiting, ticks, canBlockIndefinitely) {
+    const t = s.tasks[s.current];
+    t.state = 'Blocked'; t.waiting = waiting;
+    if (ticks === 'MAX' && canBlockIndefinitely && s.includeSuspend) {
+      t.indefinite = true; t.wake = null;
+      s.log.push(`portMAX_DELAY with INCLUDE_vTaskSuspend = 1: ${t.name} goes on xSuspendedTaskList but eTaskGetState() still says Blocked.`);
+    } else {
+      const n = ticks === 'MAX' ? MAX_DELAY : ticks;
+      t.wake = s.tick + n;
+      if (ticks === 'MAX') s.log.push(`INCLUDE_vTaskSuspend = 0: portMAX_DELAY is just a long timeout. ${t.name} goes on xDelayedTaskList and wakes at tick ${t.wake} (≈49.7 days at 1 kHz).`);
+    }
+    s.changed.push(t.name);
+    pick(s);
+  }
+
+  function reduce(prev, a) {
+    const s = structuredClone(prev);
+    s.log = []; s.changed = [];
+    const cur = s.tasks[s.current];
+    const tgt = a.target === 'SELF' ? cur : s.tasks[a.target];
+
+    switch (a.type) {
+      case 'tick': {
+        s.tick++;
+        s.log.push(`Tick ${s.tick}.`);
+        if (cur.name === 'Idle') {
+          for (const t of Object.values(s.tasks)) if (t.state === 'Deleted') {
+            t.state = 'Freed'; s.changed.push(t.name);
+            s.log.push(`Idle runs prvCheckTasksWaitingTermination(): frees ${t.name}'s TCB and stack.`);
+          }
+        }
+        for (const t of Object.values(s.tasks)) if (t.state === 'Blocked' && t.wake !== null && t.wake <= s.tick) {
+          s.log.push(`${t.name}'s ${t.waiting === 'delay' ? 'delay ended' : 'notification wait timed out'}: Blocked → Ready.`);
+          if (t.waiting === 'delay') t.ret = 'vTaskDelay returned';
+          makeReady(s, t.name);
+        }
+        if (!preemptIfHigher(s, 'preempt at the tick') && s.ready[cur.prio].length) {
+          s.log.push(`Time slicing: another prio ${cur.prio} task is ready, so ${cur.name} goes to the back of the list.`);
+          requeueCurrent(s); pick(s);
+        }
+        break;
+      }
+      case 'delay': {
+        cur.ret = '';
+        s.log.push(`${cur.name} calls vTaskDelay(${a.ticks}): Running → Blocked until tick ${s.tick + a.ticks}.`);
+        blockCurrent(s, 'delay', a.ticks, false);
+        break;
+      }
+      case 'take': {
+        const to = a.timeout === 'MAX' ? 'portMAX_DELAY' : a.timeout;
+        if (cur.value > 0) {
+          cur.ret = `ulTaskNotifyTake → ${cur.value}`;
+          s.log.push(`${cur.name} calls ulTaskNotifyTake(pdTRUE, ${to}): a notification is already pending, so it returns ${cur.value} at once and keeps running.`);
+          cur.value = 0; s.changed.push(cur.name);
+        } else {
+          cur.ret = ''; cur.inTake = true;
+          s.log.push(`${cur.name} calls ulTaskNotifyTake(pdTRUE, ${to}): count is 0, so it blocks (ucNotifyState = taskWAITING_NOTIFICATION).`);
+          blockCurrent(s, 'notify', a.timeout, true);
+        }
+        break;
+      }
+      case 'yield': {
+        if (s.ready[cur.prio].length) { s.log.push(`${cur.name} yields to the next prio ${cur.prio} task.`); requeueCurrent(s); pick(s); }
+        else s.log.push(`${cur.name} yields, but no other prio ${cur.prio} task is ready, so it keeps running.`);
+        break;
+      }
+      case 'give': {
+        const from = a.isr ? 'An ISR' : cur.name;
+        if (!live(tgt)) { s.log.push(`Illegal: ${tgt.name} is deleted. Its handle is dangling.`); break; }
+        tgt.value++; s.changed.push(tgt.name);
+        if (tgt.state === 'Blocked' && tgt.waiting === 'notify') {
+          s.log.push(`${from} gives to ${tgt.name}: it was waiting, so Blocked → Ready.`);
+          makeReady(s, tgt.name);
+          preemptIfHigher(s, a.isr ? 'portYIELD_FROM_ISR() switches on ISR exit' : 'switch now');
+        } else if (tgt.state === 'Suspended' && tgt.inTake) {
+          s.log.push(`${from} gives to ${tgt.name}: count is now ${tgt.value}, but it stays Suspended. vTaskSuspend() cleared its "waiting" flag, so the give doesn't wake it.`);
+        } else {
+          s.log.push(`${from} gives to ${tgt.name}: it isn't waiting, so only its count goes up (now ${tgt.value}).`);
+        }
+        break;
+      }
+      case 'suspend': {
+        if (tgt.name === 'Idle' || !live(tgt)) { s.log.push(`Not allowed on ${tgt.name} in this demo.`); break; }
+        if (tgt.state === 'Suspended') { s.log.push(`${tgt.name} is already Suspended.`); break; }
+        const was = tgt.state;
+        if (was === 'Ready') unqueue(s, tgt.name);
+        if (was === 'Blocked' && tgt.waiting === 'notify') s.log.push(`${tgt.name} was waiting for a notification: vTaskSuspend() sets ucNotifyState back to NOT_WAITING.`);
+        if (was === 'Blocked' && tgt.waiting === 'delay') s.log.push(`${tgt.name}'s pending delay is dropped.`);
+        Object.assign(tgt, { state: 'Suspended', waiting: null, wake: null, indefinite: false });
+        s.changed.push(tgt.name);
+        s.log.push(`vTaskSuspend(${tgt.name}): ${was} → Suspended.`);
+        if (was === 'Running') pick(s);
+        break;
+      }
+      case 'resume': {
+        if (tgt.state === 'Suspended') {
+          s.log.push(`vTaskResume(${tgt.name}): Suspended → Ready.`);
+          makeReady(s, tgt.name);
+          preemptIfHigher(s, 'switch now');
+        } else if (tgt.state === 'Blocked' && tgt.indefinite) {
+          s.log.push(`vTaskResume(${tgt.name}) does nothing. It is on xSuspendedTaskList, but prvTaskIsTaskSuspended() sees it is waiting for a notification, so it is Blocked, not Suspended.`);
+        } else {
+          s.log.push(`vTaskResume(${tgt.name}) does nothing: it is ${tgt.state}, not Suspended.`);
+        }
+        break;
+      }
+      case 'delete': {
+        if (tgt.name === 'Idle' || !live(tgt)) { s.log.push(`Not allowed on ${tgt.name}.`); break; }
+        if (tgt.name === s.current) {
+          tgt.state = 'Deleted'; tgt.inTake = false; s.changed.push(tgt.name);
+          s.log.push(`${tgt.name} deletes itself: it can't free its own stack while running on it, so it goes on xTasksWaitingTermination. The Idle task frees it later.`);
+          pick(s);
+        } else {
+          unqueue(s, tgt.name);
+          Object.assign(tgt, { state: 'Freed', waiting: null, wake: null, indefinite: false, inTake: false });
+          s.changed.push(tgt.name);
+          s.log.push(`vTaskDelete(${tgt.name}) from ${cur.name}: not running, so its TCB and stack are freed at once.`);
+        }
+        break;
+      }
+    }
+    return s;
+  }
+
+  return { init, reduce, listOf, live };
+})();
+
+// ───────────── Throwaway page shell ─────────────
+const SCENARIOS = [
+  { title: 'ISR wakes a task', cfg: 0,
+    text: 'Button waits for a notification. An ISR gives one. Watch: Button preempts Audio straight away, and when Button blocks again, Display runs, not Audio.',
+    steps: [['Button: ulTaskNotifyTake(pdTRUE, portMAX_DELAY)', { type: 'take', timeout: 'MAX' }],
+            ['ISR: vTaskNotifyGiveFromISR(Button)', { type: 'give', isr: true, target: 'Button' }],
+            ['Button: ulTaskNotifyTake(pdTRUE, portMAX_DELAY)', { type: 'take', timeout: 'MAX' }]] },
+  { title: 'Time slicing', cfg: 0,
+    text: 'Audio and Display share prio 2. Watch them swap on every tick, and what happens once one of them delays.',
+    steps: [['Button: ulTaskNotifyTake(pdTRUE, portMAX_DELAY)', { type: 'take', timeout: 'MAX' }],
+            ['SysTick', { type: 'tick' }], ['SysTick', { type: 'tick' }],
+            ['Audio: vTaskDelay(2)', { type: 'delay', ticks: 2 }],
+            ['SysTick', { type: 'tick' }], ['SysTick', { type: 'tick' }]] },
+  { title: 'Suspend during a wait', cfg: 1,
+    text: 'Button waits. Audio suspends it, then gives it a notification. Watch: the give doesn\'t wake it, but after vTaskResume() its ulTaskNotifyTake() still returns 1.',
+    steps: [['Button: ulTaskNotifyTake(pdTRUE, portMAX_DELAY)', { type: 'take', timeout: 'MAX' }],
+            ['Audio: vTaskSuspend(Button)', { type: 'suspend', target: 'Button' }],
+            ['Audio: xTaskNotifyGive(Button)', { type: 'give', isr: false, target: 'Button' }],
+            ['Audio: vTaskResume(Button)', { type: 'resume', target: 'Button' }]] },
+  { title: 'Resume a blocked task?', cfg: 1,
+    text: 'Button blocks with no timeout, so it sits on xSuspendedTaskList. Can vTaskResume() wake it? Predict before you click.',
+    steps: [['Button: ulTaskNotifyTake(pdTRUE, portMAX_DELAY)', { type: 'take', timeout: 'MAX' }],
+            ['Audio: vTaskResume(Button)', { type: 'resume', target: 'Button' }],
+            ['ISR: vTaskNotifyGiveFromISR(Button)', { type: 'give', isr: true, target: 'Button' }]] },
+  { title: 'Your config', cfg: 0,
+    text: 'Your FreeRTOSConfig.h does not define INCLUDE_vTaskSuspend, so it is 0. Watch where Button goes with portMAX_DELAY, and note that the suspend/resume buttons are disabled.',
+    steps: [['Button: ulTaskNotifyTake(pdTRUE, portMAX_DELAY)', { type: 'take', timeout: 'MAX' }],
+            ['SysTick', { type: 'tick' }]] },
+  { title: 'Self-delete', cfg: 0,
+    text: 'Logger deletes itself. Watch: it stays Deleted until the Idle task gets CPU time and frees it.',
+    steps: [['Button: ulTaskNotifyTake(pdTRUE, portMAX_DELAY)', { type: 'take', timeout: 'MAX' }],
+            ['Audio: vTaskDelay(5)', { type: 'delay', ticks: 5 }],
+            ['Display: vTaskDelay(5)', { type: 'delay', ticks: 5 }],
+            ['Logger: vTaskDelete(NULL)', { type: 'delete', target: 'SELF' }],
+            ['SysTick (Idle is running)', { type: 'tick' }]] },
+];
+
+let state, cfg = 0, activeTab = -1, stepIdx = 0;
+const $ = id => document.getElementById(id);
+
+function reset(newCfg = cfg) { cfg = newCfg; state = Kernel.init(cfg === 1); render(); }
+function dispatch(a) { state = Kernel.reduce(state, a); render(); }
+
+function render() {
+  $('cfg0').classList.toggle('on', cfg === 0);
+  $('cfg1').classList.toggle('on', cfg === 1);
+  $('tick').textContent = state.tick;
+  $('cur').textContent = state.current;
+  $('tasks').innerHTML = Object.values(state.tasks).map(t => `
+    <tr class="${state.changed.includes(t.name) ? 'changed' : ''}">
+      <td>${t.name}</td><td>${t.prio}</td><td class="state">${t.state}</td>
+      <td class="mono">${Kernel.listOf(t)}</td>
+      <td class="mono">${t.state === 'Blocked' ? (t.indefinite ? 'never (no timeout)' : t.wake) : ''}</td>
+      <td class="mono">${t.value}</td><td class="mono">${t.ret}</td>
+    </tr>`).join('');
+  $('log').innerHTML = state.log.map(l => `<p>${l}</p>`).join('');
+  const sel = $('target'), keep = sel.value;
+  sel.innerHTML = Object.values(state.tasks).filter(t => t.name !== state.current).map(t => `<option>${t.name}</option>`).join('');
+  if ([...sel.options].some(o => o.value === keep)) sel.value = keep;
+  const idle = state.current === 'Idle';
+  document.querySelectorAll('[data-run]').forEach(b => b.disabled = idle);
+  document.querySelectorAll('.needs-susp').forEach(b => { b.disabled = cfg === 0; b.title = cfg === 0 ? 'Not compiled in: INCLUDE_vTaskSuspend = 0' : ''; });
+  renderScenario();
+}
+
+function renderScenario() {
+  $('tabs').innerHTML = SCENARIOS.map((sc, i) => `<button class="${i === activeTab ? 'on' : ''}" data-tab="${i}">${sc.title}</button>`).join('');
+  if (activeTab < 0) { $('scenario').innerHTML = '<p class="note">Pick a scenario. It resets the demo to a known start.</p>'; return; }
+  const sc = SCENARIOS[activeTab];
+  $('scenario').innerHTML = `<p>${sc.text}</p><p class="note">Starts with INCLUDE_vTaskSuspend = ${sc.cfg}.</p><div class="steps">` +
+    sc.steps.map(([label], i) => `<button data-step="${i}" ${i !== stepIdx ? 'disabled' : ''} class="${i < stepIdx ? 'done' : ''}">${i + 1}. ${label}</button>`).join('') +
+    `</div>${stepIdx >= sc.steps.length ? '<p class="note">Done. Did anything surprise you?</p>' : ''}`;
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.disabled) return;
+  if (b.id === 'cfg0') { activeTab = -1; reset(0); }
+  else if (b.id === 'cfg1') { activeTab = -1; reset(1); }
+  else if (b.id === 'reset') { activeTab = -1; reset(); }
+  else if (b.dataset.act) dispatch(JSON.parse(b.dataset.act));
+  else if (b.dataset.run) dispatch(JSON.parse(b.dataset.run));
+  else if (b.dataset.tgt) dispatch({ ...JSON.parse(b.dataset.tgt), target: $('target').value });
+  else if (b.dataset.tab) { activeTab = +b.dataset.tab; stepIdx = 0; reset(SCENARIOS[activeTab].cfg); }
+  else if (b.dataset.step) { const sc = SCENARIOS[activeTab]; stepIdx++; dispatch(sc.steps[+b.dataset.step][1]); }
+});
+
+reset(0);
+</script>
+</body>
+</html>

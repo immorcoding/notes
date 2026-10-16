@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Three Small Tools</title>
+<link rel="stylesheet" href="../assets/style.css">
+<script src="../assets/quiz.js"></script>
+</head>
+<body>
+<main>
+<h1>Three small tools</h1>
+<p class="subtitle">Lesson 2 · ~15 minutes · Goal: know exactly when to use <code>/wait-what</code>, <code>/wizard</code> and <code>/to-questionnaire</code>, and see them in embedded, game and video work.</p>
+
+<h2>Recall first</h2>
+<div class="box no-print">
+<p>From <a href="0001-the-skill-map.html">lesson 1</a>: in one line each, what problem does each of these three skills solve? Write it before you read on.</p>
+<textarea placeholder="wait-what: …&#10;wizard: …&#10;to-questionnaire: …"></textarea>
+</div>
+
+<p>All three are <strong>standalone</strong>: not steps in the main flow. You use them at any moment, inside any other work. A quick way to tell them apart is to ask <em>where the blocker is</em>:</p>
+
+<table>
+<tr><th>The blocker is…</th><th>Use</th></tr>
+<tr><td>In <strong>your</strong> understanding: the agent lost you</td><td><code>/wait-what</code></td></tr>
+<tr><td>In <strong>your hands</strong>: only a human can click or plug it in</td><td><code>/wizard</code></td></tr>
+<tr><td>In <strong>someone else's head</strong>: they know, you don't</td><td><code>/to-questionnaire</code></td></tr>
+</table>
+
+<!-- ───────────────────────────── wait-what ───────────────────────────── -->
+<h2>1 · <code>/wait-what</code></h2>
+<p><strong>What it is.</strong> The whole skill is three lines. It tells the agent: "I don't understand where you've got to. Re-pitch that: give a little context, use ASD-STE100 Simplified Technical English, and use the words from <code>GLOSSARY.md</code>."<a class="cite" href="https://aihero.dev/skills-wait-what">[1]</a></p>
+
+<p><strong>Why the name matters.</strong> "Be concise" or <code>/tldr</code> describes the <em>output</em>, so the model clips words and gets blunter. "Wait" describes <em>your state</em>, so the model backs up and adds the premise you missed. Shorter <em>and</em> clearer.<a class="cite" href="https://aihero.dev/skills-wait-what">[1]</a></p>
+
+<ul>
+<li>User-invoked only. Only you know when you stopped following.</li>
+<li>It re-pitches "that", not "the last message": the agent decides how far back to go.</li>
+<li>No <code>GLOSSARY.md</code>? It still works, but you lose the project-vocabulary half. (Your <code>notes</code> repo has none yet.)</li>
+<li>It fixes one message. The upfront cure is <code>/grill-with-docs</code>, which builds the shared words.</li>
+</ul>
+
+<h3>In your fields <span class="footer">(my examples, not Matt's)</span></h3>
+<table>
+<tr><td><strong>Embedded</strong></td><td>The agent explains tickless idle with "suppress ticks, reprogram LPTIM compare, fix up <code>xTickCount</code> via step-tick, BASEPRI gating…". <code>/wait-what</code> gets you the premise first: <em>why</em> the tick is stopped at all.</td></tr>
+<tr><td><strong>Games</strong></td><td>A reply about "archetype chunks, structural changes and sync points" in an ECS. A glossary that defines <em>entity</em>, <em>component</em>, <em>system</em> makes the re-pitch use your words.</td></tr>
+<tr><td><strong>Video</strong></td><td>"Long-GOP proxies hurt scrubbing; go intra-frame." The re-pitch should say what a GOP is and why your editor stutters, in one short paragraph.</td></tr>
+</table>
+
+<!-- ───────────────────────────── wizard ───────────────────────────── -->
+<h2>2 · <code>/wizard</code></h2>
+<p><strong>What it is.</strong> The agent <em>writes</em> an interactive bash script; <strong>you run it</strong>. The script goes one <strong>stage</strong> per screen: opens a URL, says what to click, captures the value (secrets typed hidden), writes it to <code>.env</code> or GitHub secrets/variables, and asks for confirmation before anything irreversible.<a class="cite" href="https://github.com/mattpocock/skills/blob/main/docs/engineering/wizard.md">[2]</a></p>
+
+<ol class="flow">
+<li><strong>Scope</strong>: reads <code>.env*</code>, README, CI <code>secrets.*</code> references; shows you the stage list to confirm.</li>
+<li><strong>Map</strong>: exact click path per stage. If it doesn't know the UI, it asks: never invents.</li>
+<li><strong>Author</strong>: copies <code>template.sh</code>, writes only the stages. The library above the <code>STAGES</code> marker is never edited.</li>
+<li><strong>Verify</strong>: <code>bash -n</code>, <code>shellcheck</code>, static trace. It never runs it end to end: your first run is the test.</li>
+</ol>
+
+<p>A stage looks like this (from Matt's template):</p>
+<pre><code>stage "Stripe: API keys"
+open_url "https://dashboard.stripe.com/test/apikeys"
+step "Click 'Reveal test key' on the Secret key row, then copy it."
+ask_secret STRIPE_SECRET_KEY "Paste the secret key:"
+write_env STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"
+set_secret STRIPE_SECRET_KEY "$STRIPE_SECRET_KEY"   # CI needs this one</code></pre>
+
+<ul>
+<li><strong>Model-invoked</strong>: the agent reaches for it on its own when it hits a step only you can do, instead of dumping six steps into chat.</li>
+<li>Keys you type into the script never enter the model's context. Keys you paste into <em>chat</em> do.</li>
+<li>No back button: Ctrl-C and re-run. Saved values come back as defaults.</li>
+<li>Ephemeral by default. Commit it only if the next person will need the same setup.</li>
+<li>It's bash: on Windows, run it in Git Bash or WSL.</li>
+</ul>
+
+<h3>In your fields <span class="footer">(my examples, not Matt's)</span></h3>
+<table>
+<tr><td><strong>Embedded</strong></td><td>Bringing up a new board: "set BOOT0 jumper", "plug in ST-Link", "power-cycle" as pure-action stages; capture the COM port into <code>.env</code>; put a <code>confirm</code> gate before changing option bytes or readout protection, which is hard to undo.</td></tr>
+<tr><td><strong>Games</strong></td><td>Store/CI release setup: create the app and depots in a store's partner dashboard, capture the IDs as GitHub <em>variables</em>, the build-upload account as a <em>secret</em>, so CI can push builds.</td></tr>
+<tr><td><strong>Video</strong></td><td>Wiring an upload pipeline: create an OAuth client in a cloud console, capture client ID (variable) and secret (secret); or a one-off archive move where "delete the old bucket" sits behind a <code>confirm</code>.</td></tr>
+</table>
+<p class="footer">Physical steps can't be verified by the script; it can only ask you to confirm them. That's still better than instructions scrolling away in chat.</p>
+
+<!-- ───────────────────────────── to-questionnaire ───────────────────────────── -->
+<h2>3 · <code>/to-questionnaire</code></h2>
+<p><strong>What it is.</strong> It writes a Markdown questionnaire for <strong>one</strong> person who holds knowledge you lack. Fill-in async, or go through it together in a meeting.<a class="cite" href="https://aihero.dev/skills-to-questionnaire">[3]</a></p>
+
+<p><strong>The key move: grill the send, not the subject.</strong> It asks you only two things, then stops:</p>
+<ol>
+<li><strong>Who is it going to?</strong> Role, expertise, relation to you: sets tone and how much context to include.</li>
+<li><strong>What do you need back?</strong> The decisions or facts you can't settle alone: becomes the checklist.</li>
+</ol>
+<p>Then it writes <code>to-questionnaire-&lt;slug&gt;.md</code> in the current folder: purpose, short context, how to answer ("I don't know" is welcome), themed questions <em>most-important-first</em>, one idea per question, and a closing "anything else?". It does not send it anywhere.</p>
+
+<ul>
+<li>One recipient per run. Three experts → three runs.</li>
+<li>Flat list, not branching.</li>
+<li>Best run <em>in the same conversation</em> as a stalled grilling session, so it can draw on it.</li>
+<li>Bring the answers back into <code>/grill-with-docs</code> or <code>/to-spec</code>.</li>
+</ul>
+
+<h3>In your fields <span class="footer">(my examples, not Matt's)</span></h3>
+<table>
+<tr><td><strong>Embedded</strong></td><td>To the <em>hardware engineer</em>: card-detect pin polarity, which DMA streams are free, max SPI clock the layout allows. You can't read these from code.</td></tr>
+<tr><td><strong>Games</strong></td><td>To the <em>game designer</em>: what happens on death mid-quest, is save anywhere or checkpoint-only. Business rules the code must follow but you shouldn't guess.</td></tr>
+<tr><td><strong>Video</strong></td><td>To the <em>client or director</em>: delivery resolution and frame rate, colour space, loudness target, which shots are locked. A guess here means a re-render.</td></tr>
+</table>
+
+<!-- ───────────────────────────── practice ───────────────────────────── -->
+<h2>Practice</h2>
+<p>Mixed on purpose. Some answers are none of today's three.</p>
+<div class="quiz" id="q"></div>
+<script>
+Quiz.mount('q', [
+  { q: 'Your FreeRTOS firmware needs the SD card-detect polarity, and only the board designer knows it.',
+    options: ['/wait-what', '/to-questionnaire', '/wizard', '/grill-me'], answer: 1,
+    why: 'The answer lives in someone else\'s head.' },
+  { q: 'The agent explains PendSV and BASEPRI in a dense paragraph and you lose the thread halfway.',
+    options: ['/grill-me', '/teach', '/wait-what', '/to-questionnaire'], answer: 2,
+    why: 'You stopped following. Only you can say so, which is why it is user-invoked.' },
+  { q: 'A game\'s CI needs store depot IDs and an upload login, which only you can get from a partner dashboard.',
+    options: ['/wizard', '/handoff', '/to-questionnaire', '/implement'], answer: 0,
+    why: 'Steps only a human can take, values landing in CI.' },
+  { q: 'You can\'t decide your own video project\'s folder layout; nobody else knows either.',
+    options: ['/to-questionnaire', '/wizard', '/wait-what', '/grill-me'], answer: 3,
+    why: 'The answer is in your head, unsharpened. In a repo, /grill-with-docs is better still.' },
+  { q: 'Wizard stage: the store\'s public app ID, which CI needs. Where should it go?',
+    options: ['env file only', 'GitHub Actions secret', 'GitHub Actions variable', 'no destination needed'], answer: 2,
+    why: 'CI reads it and it is public → variable. Secrets are for sensitive values.' },
+  { q: 'Wizard stage: "move the BOOT0 jumper, then press reset". Where does its value go?',
+    options: ['no destination needed', 'env file only', 'GitHub Actions secret', 'GitHub Actions variable'], answer: 0,
+    why: 'A pure action captures nothing. Pair it with confirm() if it matters.' },
+  { q: 'What is wrong with: "What resolution, frame rate and colour space do you want?"',
+    options: ['Too much context given', 'It needs a deadline', 'Three questions in one', 'It should branch later'], answer: 2,
+    why: 'One idea per question, each with its own answer stub. Async means you may get only one pass.' },
+  { q: 'During /to-questionnaire, the agent starts asking you how tickless idle works. What does that mean?',
+    options: ['It is working fine', 'It needs more context', 'The skill has drifted', 'Run /wait-what next'], answer: 2,
+    why: 'It must only grill the send (who, what you need back), never the subject.' }
+]);
+</script>
+
+<h2>Try it for real</h2>
+<div class="box">
+<p>Pick <strong>one</strong>, today, on real work:</p>
+<ul>
+<li>Next time I lose you mid-explanation, type <code>/wait-what</code> and judge it: shorter <em>and</em> clearer, or just blunter?</li>
+<li>Think of a question your notes are stuck on that only someone else can answer (a board designer, a colleague, a forum expert). Run <code>/to-questionnaire</code> for that one person.</li>
+<li>Next time setup needs dashboard clicks or hardware steps, ask for a wizard instead of a list.</li>
+</ul>
+</div>
+
+<hr>
+<h2>Read this next</h2>
+<p><strong>Primary source:</strong> the <a href="https://github.com/mattpocock/skills/blob/main/docs/engineering/wizard.md">wizard docs page</a>. It's the longest of the three and has a "Common questions" section on secrets, re-runs and what it does and doesn't know about your setup. Then skim <a href="https://aihero.dev/skills-to-questionnaire">to-questionnaire</a>'s table of "where the answers live".</p>
+<p><strong>Keep:</strong> <a href="../reference/standalone-trio.html">standalone trio</a> reference · <a href="../reference/skill-map.html">skill map</a>.</p>
+
+<div class="box">
+<p><strong>Questions?</strong> Ask me in the chat. A real situation from your FreeRTOS notes, a game or a video project is the best test of which skill fits. Tell me what you tried and how it went, and I'll record it.</p>
+</div>
+
+<p class="footer">[1] aihero.dev/skills-wait-what · [2] docs/engineering/wizard.md + skills/engineering/wizard/template.sh · [3] aihero.dev/skills-to-questionnaire. Domain examples are mine, for illustration.</p>
+</main>
+</body>
+</html>
