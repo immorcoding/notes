@@ -125,7 +125,7 @@ footer{color:var(--muted);font-size:.85rem}
 <pre class="mermaid">
 flowchart TD
   R["上电 / 复位"] --> V["boot：取 0x08000000 处 MSP 与 Reset_Handler，进 main · B1 B3"]
-  V --> K{"BKP_DR0 == 魔数？ · B10"}
+  V --> K{"APP 留了升级请求？（BKP_DR0 == 魔数） · B10"}
   K -- 是 --> C["清魔数"] --> U
   K -- 否 --> P{"复位时按住按键？ · B10"}
   P -- 是 --> U
