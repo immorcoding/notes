@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- PROTOTYPE：原型：Bootloader 学习票序列草案（issue #19）。丢弃型草稿，双击打开即可。 -->
+<title>Bootloader 学习票草案</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* 布局：单栏文档，数据手册风格（地址用等宽字体，存储图高地址在上），票卡两列网格 */
+:root{
+  --bg:#f5f7f6; --surface:#ffffff; --fg:#17201d; --muted:#5b6a64; --line:#d5ddd9;
+  --accent:#1f6f5c; --accent-soft:#e1efe9; --warn:#9a5b00; --warn-soft:#fbf0dc;
+  --boot:#2c5d8a; --flag:#8a5a2c; --spare:#8a8f8c; --app:#1f6f5c;
+  --display:"Noto Serif SC","Songti SC",serif; --body:"Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  --mono:"JetBrains Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121816; --surface:#1a2320; --fg:#e3ebe7; --muted:#97a69f; --line:#2e3b36;
+  --accent:#5fbf9f; --accent-soft:#1f3a31; --warn:#e2a54a; --warn-soft:#3a2d17;
+  --boot:#6fa3d6; --flag:#d0a06c; --spare:#8f9893; --app:#5fbf9f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121816; --surface:#1a2320; --fg:#e3ebe7; --muted:#97a69f; --line:#2e3b36;
+  --accent:#5fbf9f; --accent-soft:#1f3a31; --warn:#e2a54a; --warn-soft:#3a2d17;
+  --boot:#6fa3d6; --flag:#d0a06c; --spare:#8f9893; --app:#5fbf9f; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.7;font-size:15px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:40px}
+h1,h2{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:1.9rem} h2{font-size:1.35rem}
+h3{font-size:1.02rem;margin:0}
+p{margin:0;max-width:68ch}
+code,.mono{font-family:var(--mono);font-size:.88em}
+.eyebrow{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}
+header{display:flex;flex-direction:column;gap:10px}
+.stamp{align-self:flex-start;font-family:var(--mono);font-size:.75rem;border:1.5px dashed var(--warn);color:var(--warn);padding:2px 10px;border-radius:3px}
+section{display:flex;flex-direction:column;gap:16px}
+.qs{background:var(--warn-soft);border:1px solid var(--line);border-radius:6px;padding:18px 20px}
+.qs ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:8px}
+.qs li{max-width:80ch}
+/* 存储图 */
+.mapgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}
+@media (max-width:760px){.mapgrid{grid-template-columns:minmax(0,1fr)}}
+.mem{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--surface)}
+.seg{display:grid;grid-template-columns:7.5rem 1fr;border-top:1px solid var(--line)}
+.seg:first-child{border-top:0}
+.addr{font-family:var(--mono);font-size:.78rem;color:var(--muted);padding:8px 10px;border-right:1px solid var(--line);font-variant-numeric:tabular-nums;display:flex;flex-direction:column;justify-content:space-between}
+.blk{padding:8px 12px;border-left:6px solid;display:flex;flex-direction:column;gap:2px}
+.blk b{font-weight:700}
+.blk small{color:var(--muted)}
+.app{border-color:var(--app);min-height:170px}
+.spare{border-color:var(--spare)} .flag{border-color:var(--flag)} .boot{border-color:var(--boot);min-height:70px}
+.tag{font-family:var(--mono);font-size:.72rem;background:var(--accent-soft);color:var(--accent);padding:1px 6px;border-radius:3px;white-space:nowrap}
+.side{display:flex;flex-direction:column;gap:12px}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.rec{font-family:var(--mono);font-size:.82rem;display:grid;grid-template-columns:auto 1fr;gap:2px 14px}
+.rec span:nth-child(odd){color:var(--muted)}
+.flow{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px;overflow-x:auto}
+/* 票卡 */
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:.85rem;color:var(--muted)}
+.own{display:inline-block;font-size:.72rem;padding:1px 7px;border-radius:10px;border:1px solid var(--accent);color:var(--accent);margin-right:4px;white-space:nowrap}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.cards{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.card.opt{border-style:dashed}
+.top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.id{font-family:var(--mono);font-weight:600;color:var(--accent)}
+.dep{font-size:.78rem;color:var(--muted);margin-left:auto}
+dl{margin:0;display:grid;grid-template-columns:4.6em minmax(0,1fr);gap:6px 10px;font-size:.9rem}
+dt{color:var(--muted);font-size:.8rem;padding-top:2px}
+dd{margin:0}
+.q{color:var(--warn);font-size:.85rem}
+footer{color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="stamp">PROTOTYPE · 草稿 · 供对照修改</span>
+  <div class="eyebrow">Wayfinder：F411 Bootloader 学习路线 › 原型：Bootloader 学习票序列草案</div>
+  <h1>Bootloader 学习票草案</h1>
+  <p>这是 agent 先拿出来的粗稿，用来给你改的，不是定稿。下面有 12 张票，按顺序排；每张都写了先讲的理论、动手前的预测题、板上应看到的现象，以及哪部分由你亲手做。每张票都按“先讲理论，再用 <code>/teach</code> 学”来开展。</p>
+</header>
+
+<section class="qs">
+  <h2>请你先看这几处</h2>
+  <ol>
+    <li><b>粒度</b>：12 张票合适吗？哪些想合并，哪些想再拆？</li>
+    <li><b>Flash 寄存器版</b>（B6）单独一张，还是并进 B5 作为后半段？</li>
+    <li><b>双镜像调试</b>（B4）放在跳转之后：B3 之前只单独调 boot。你想更早就能同时调两个程序吗？</li>
+    <li><b>触发方式</b>（B10）放在自定义协议（B9）之后，这样“APP 发命令 → 进 boot → 升级”能一次走通。要提前吗？</li>
+    <li><b>ROM bootloader 对比</b>（B13，虚线框）：地图把它列为“只作对比”。保留成选做票，还是删掉？</li>
+    <li><b>预测题与现象</b>：有没有哪张票的预测题太简单、太难，或者板上现象你没法观察（比如没有串口工具、没有逻辑分析仪）？</li>
+  </ol>
+</section>
+
+<section>
+  <h2>Flash 分区（来自已定决策）</h2>
+  <div class="mapgrid">
+    <div class="mem" aria-label="F411CEU6 Flash 存储图，高地址在上，不按比例">
+      <div class="seg"><div class="addr"><span>0x0807FFFF</span><span>0x08010000</span></div>
+        <div class="blk app"><b>APP · 扇区 4–7 · 448K</b><small>64K + 3×128K；链接到 0x08010000，<code>VECT_TAB_OFFSET = 0x10000</code></small><small><code>app.bin</code> 末尾追加 4 字节 CRC32</small><span><span class="tag">B2</span> <span class="tag">B5</span> <span class="tag">B9</span></span></div></div>
+      <div class="seg"><div class="addr"><span>0x0800FFFF</span><span>0x0800C000</span></div>
+        <div class="blk spare"><b>备用 · 扇区 3 · 16K</b><small>空着；boot 不够时可占用。B5 练习擦写时用它，不碰 APP</small><span><span class="tag">B5</span></span></div></div>
+      <div class="seg"><div class="addr"><span>0x0800BFFF</span><span>0x08008000</span></div>
+        <div class="blk flag"><b>APP 信息记录 · 扇区 2 · 16K</b><small>存 {magic, length, CRC32}</small><span><span class="tag">B8</span></span></div></div>
+      <div class="seg"><div class="addr"><span>0x08007FFF</span><span>0x08000000</span></div>
+        <div class="blk boot"><b>boot · 扇区 0–1 · 32K</b><small>上电从这里取 MSP 和 Reset_Handler</small><span><span class="tag">B1</span> <span class="tag">B3</span></span></div></div>
+    </div>
+    <div class="side">
+      <div class="box"><span class="eyebrow">扇区 2 记录</span>
+        <div class="rec"><span>+0x00</span><span>magic</span><span>+0x04</span><span>length（字节，不含 CRC）</span><span>+0x08</span><span>CRC32（STM32 硬件算法）</span></div>
+        <small>升级成功后由 boot 写入；没有记录就视为“无有效 APP”。</small></div>
+      <div class="box"><span class="eyebrow">RAM 外的标志</span>
+        <p><code>RTC_BKP_DR0</code> 存升级魔数：软复位后不丢，也不用擦 Flash。写之前要开 PWR 时钟并置 DBP。<span class="tag">B10</span></p></div>
+      <div class="box"><span class="eyebrow">图上没画</span>
+        <p>存储图不按比例：16K 扇区和 128K 扇区画得差不多高。扇区 4 是 64K，5–7 各 128K。</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>上电到跳转的启动流程</h2>
+  <p>每一步后面的标签是讲这一步的票。</p>
+  <div class="flow">
+<pre class="mermaid">
+flowchart TD
+  R["上电 / 复位"] --> V["boot：取 0x08000000 处 MSP 与 Reset_Handler，进 main · B1 B3"]
+  V --> K{"BKP_DR0 == 魔数？ · B10"}
+  K -- 是 --> C["清魔数"] --> U
+  K -- 否 --> P{"复位时按住按键？ · B10"}
+  P -- 是 --> U
+  P -- 否 --> I{"扇区 2 记录有效？ · B8"}
+  I -- 否 --> U
+  I -- 是 --> X{"APP 区 CRC32 == 记录值？ · B7 B8"}
+  X -- 否 --> U
+  X -- 是 --> J["关中断、停 SysTick、DeInit；MSP = APP 第 0 字，跳 APP 第 1 字 · B3"]
+  J --> A["APP 运行，VTOR = 0x08010000 · B2"]
+  U["升级模式：收包 → 按大小擦扇区 → 写入 → 读回算 CRC32 → 写扇区 2 记录 · B5 B6 B9 B11"] --> RS["NVIC_SystemReset"]
+  RS --> R
+  A -. "收到升级命令：写魔数 + 软复位 · B10" .-> R
+</pre>
+  </div>
+</section>
+
+<section>
+  <h2>票序列</h2>
+  <div class="legend">
+    <span><span class="own">CubeMX</span><span class="own">.ld</span><span class="own">boot 代码</span><span class="own">调试</span> 你亲手做的部分</span>
+    <span>agent 提供：APP 点灯、PC 脚本、工程脚手架、review 与提示</span>
+  </div>
+  <div class="cards">
+
+    <article class="card">
+      <div class="top"><span class="id">B1</span><h3>上电后发生了什么：向量表到 main</h3><span class="dep">无前置</span></div>
+      <dl>
+        <dt>理论</dt><dd>向量表前两个字（MSP、Reset_Handler）、启动文件 <code>startup_*.s</code>、<code>.ld</code> 里的段（.isr_vector/.text/.data/.bss）、<code>.data</code> 拷贝和 <code>.bss</code> 清零</dd>
+        <dt>预测题</dt><dd>0x08000000 和 0x08000004 处是什么值？分别对应 <code>.map</code> 里的哪个符号？为什么第二个是奇数？</dd>
+        <dt>板上现象</dt><dd>用 GDB 读这两个字，和 <code>.map</code> 里的 <code>_estack</code>、<code>Reset_Handler</code> 对上；在 Reset_Handler 单步，看到 SP 等于第一个字</dd>
+        <dt>你亲手</dt><dd><span class="own">调试</span></dd>
+        <dt>agent</dt><dd>提供现成的点灯工程</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B2</span><h3>让 APP 跑在 0x08010000</h3><span class="dep">← B1</span></div>
+      <dl>
+        <dt>理论</dt><dd>链接地址和下载地址；<code>.ld</code> 的 MEMORY ORIGIN/LENGTH；VTOR 与 <code>USER_VECT_TAB_ADDRESS</code>/<code>VECT_TAB_OFFSET</code>；0x200 对齐</dd>
+        <dt>预测题</dt><dd>只改 <code>.ld</code>、不改 VTOR，<code>HAL_Delay</code> 会怎样？为什么？</dd>
+        <dt>板上现象</dt><dd>烧到 0x08010000；用 GDB 手动设 SP/PC 跳过去能点灯。先故意不改 VTOR，看 SysTick 进错向量表；改完后正常闪。顺便确认：CubeMX 重新生成会不会覆盖这两处修改</dd>
+        <dt>你亲手</dt><dd><span class="own">CubeMX</span><span class="own">.ld</span><span class="own">调试</span>（APP 的 VTOR 偏移）</dd>
+        <dt>agent</dt><dd>APP 点灯逻辑、<code>F411_bootloader/app</code> 脚手架</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B3</span><h3>最小 boot：跳转到 APP</h3><span class="dep">← B2</span></div>
+      <dl>
+        <dt>理论</dt><dd>跳转清单：关中断（ICER）、清 pending（ICPR/ICSR）、停 SysTick、<code>HAL_RCC_DeInit</code> 与 SysTick 的先后顺序、设 MSP、函数指针跳 Reset_Handler</dd>
+        <dt>预测题</dt><dd>不停 SysTick 就跳，会在 APP 里出什么问题？跳转后 APP 用的是哪个栈？</dd>
+        <dt>板上现象</dt><dd>上电后 boot 灯闪 3 下，再出现 APP 的闪法。故意漏掉一步，复现预测的问题</dd>
+        <dt>你亲手</dt><dd><span class="own">CubeMX</span><span class="own">.ld</span>（boot 限制为 32K）<span class="own">boot 代码</span><span class="own">调试</span></dd>
+        <dt>agent</dt><dd><code>F411_bootloader/boot</code> 脚手架、review</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B4</span><h3>同时调试 boot 和 APP</h3><span class="dep">← B3</span></div>
+      <dl>
+        <dt>理论</dt><dd>ELF 里的符号与地址；<code>launch.json</code> 的 <code>imagesAndSymbols</code>（按顺序烧录，最后一项是主 ELF）；<code>add-symbol-file</code></dd>
+        <dt>预测题</dt><dd>两个 ELF 都有 <code>main</code>，<code>runEntry: main</code> 会停在哪个？</dd>
+        <dt>板上现象</dt><dd>一次启动就能在 boot 的跳转处和 APP 的 <code>main</code> 各停一次，两边都看得到源码</dd>
+        <dt>你亲手</dt><dd><span class="own">调试</span>（写 <code>launch.json</code>）</dd>
+        <dt>agent</dt><dd>review 配置；这张票同时清掉地图上“双镜像调试”那块未定内容</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B5</span><h3>Flash 擦写（HAL 版）</h3><span class="dep">← B3</span></div>
+      <dl>
+        <dt>理论</dt><dd>扇区布局、只能整扇区擦、擦后全 1、写只能 1→0、按 32 位写；解锁/上锁；擦写时总线停住</dd>
+        <dt>预测题</dt><dd>擦一个 16K 扇区要多久？不擦直接往写过的字再写会怎样？</dd>
+        <dt>板上现象</dt><dd>在扇区 3（备用区）擦、写、读回；用 GPIO 翻转或 DWT 量出擦除耗时；写出“地址 → 扇区号”函数，用几个边界地址测对</dd>
+        <dt>你亲手</dt><dd><span class="own">boot 代码</span><span class="own">调试</span></dd>
+        <dt>agent</dt><dd>review、提示</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B6</span><h3>Flash 擦写（寄存器版）</h3><span class="dep">← B5</span></div>
+      <dl>
+        <dt>理论</dt><dd><code>FLASH-&gt;KEYR</code>/<code>CR</code>/<code>SR</code>；PSIZE、SNB、STRT、BSY；错误标志</dd>
+        <dt>预测题</dt><dd>忘了解锁就写，SR 里哪一位会置 1？</dd>
+        <dt>板上现象</dt><dd>和 B5 同样的结果；在 GDB 里看 SR 的变化和预测一致</dd>
+        <dt>你亲手</dt><dd><span class="own">boot 代码</span><span class="own">调试</span></dd>
+        <dt>agent</dt><dd>review、与 HAL 源码对照</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B7</span><h3>CRC16 与硬件 CRC32</h3><span class="dep">← B3</span></div>
+      <dl>
+        <dt>理论</dt><dd>CRC 是什么、能查出什么错；CRC16-CCITT（XMODEM）；STM32 CRC 外设的算法（0x04C11DB7、初值全 1、按字输入、不反转）以及长度不是 4 倍数时补 0xFF</dd>
+        <dt>预测题</dt><dd><code>"123456789"</code> 的 CRC16-XMODEM 是多少？</dd>
+        <dt>板上现象</dt><dd>板上软件 CRC16 算出 0x31C3；硬件 CRC32 对同一段数据的结果和 PC 脚本一致</dd>
+        <dt>你亲手</dt><dd><span class="own">boot 代码</span>（CRC16、调用 CRC 外设）<span class="own">调试</span></dd>
+        <dt>agent</dt><dd>PC 端 CRC32 脚本和“追加到 <code>app.bin</code>”的脚本</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B8</span><h3>APP 信息记录与跳转前校验</h3><span class="dep">← B5 B7</span></div>
+      <dl>
+        <dt>理论</dt><dd>扇区 2 记录的格式和魔数的作用；为什么每次跳转前都要校验；“没有记录”和“校验失败”怎么区分</dd>
+        <dt>预测题</dt><dd>在 APP 区改一个字节，boot 会怎么做？擦掉扇区 2 又会怎样？</dd>
+        <dt>板上现象</dt><dd>用脚本或 GDB 写入正确记录 → 跳转；改坏 APP 或擦掉记录 → 停在 boot（用不同闪法区分）</dd>
+        <dt>你亲手</dt><dd><span class="own">boot 代码</span><span class="own">调试</span></dd>
+        <dt>agent</dt><dd>review</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B9</span><h3>自定义协议：串口升级</h3><span class="dep">← B6 B8</span></div>
+      <dl>
+        <dt>理论</dt><dd>为什么要分包、包号、ACK/NAK 和重发；ACK 兼作流控（等擦除）；传输层和存储层分开；UART 接收方式和超时</dd>
+        <dt>预测题</dt><dd>擦 128K 扇区时 PC 继续发包会怎样？你的包大小、超时和重试次数怎么定？</dd>
+        <dt>板上现象</dt><dd>PC 脚本发一个新 APP（闪法不同），读回校验通过、写记录、复位后跑新 APP；脚本故意发错一包，能看到 NAK 和重发</dd>
+        <dt>你亲手</dt><dd><span class="own">CubeMX</span>（USART）<span class="own">boot 代码</span>（协议设计 + 实现）<span class="own">调试</span></dd>
+        <dt>agent</dt><dd>PC 端 Python 发送脚本（含故障注入）</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B10</span><h3>进入升级：备份寄存器、软复位、按键救砖</h3><span class="dep">← B9</span></div>
+      <dl>
+        <dt>理论</dt><dd>备份域、PWR 时钟与 DBP；复位种类与 <code>RCC_CSR</code> 复位标志；<code>NVIC_SystemReset</code> 做了什么</dd>
+        <dt>预测题</dt><dd>写了魔数后断电再上电，魔数还在吗？（核心板 VBAT 怎么接的？）</dd>
+        <dt>板上现象</dt><dd>串口给 APP 发命令 → 板子进 boot；断电对照；复位时按住 KEY 也能进 boot</dd>
+        <dt>你亲手</dt><dd><span class="own">CubeMX</span>（按键 GPIO）<span class="own">boot 代码</span>（读、清魔数）以及 APP 侧“写魔数 + 软复位”<span class="own">调试</span></dd>
+        <dt>agent</dt><dd>APP 侧命令解析</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B11</span><h3>YMODEM 与 Tera Term</h3><span class="dep">← B9</span></div>
+      <dl>
+        <dt>理论</dt><dd>YMODEM 帧格式：第 0 块（文件名、大小）、SOH/STX、EOT、CAN；和自定义协议逐项对比</dd>
+        <dt>预测题</dt><dd>第 0 块里有什么？Tera Term 发完最后一块后还会发什么？</dd>
+        <dt>板上现象</dt><dd>用 Tera Term 发 <code>app.bin</code>，升级成功；存储层代码一行没改</dd>
+        <dt>你亲手</dt><dd><span class="own">boot 代码</span>（YMODEM 接收）<span class="own">调试</span></dd>
+        <dt>agent</dt><dd>review、协议资料</dd>
+      </dl>
+    </article>
+
+    <article class="card">
+      <div class="top"><span class="id">B12</span><h3>综合验收：断电测试</h3><span class="dep">← B10 B11</span></div>
+      <dl>
+        <dt>理论</dt><dd>回顾整个流程；每一步断电分别会留下什么状态</dd>
+        <dt>预测题</dt><dd>擦完扇区、只写了一半时断电，再上电会进哪条路径？写记录之前断电呢？</dd>
+        <dt>板上现象</dt><dd>升级中途拔电，再上电自动留在 boot，重新升级成功；写一页“我的 bootloader”笔记，画出你自己的流程图</dd>
+        <dt>你亲手</dt><dd><span class="own">调试</span>、笔记</dd>
+        <dt>agent</dt><dd>验收清单</dd>
+      </dl>
+    </article>
+
+    <article class="card opt">
+      <div class="top"><span class="id">B13</span><h3>选做：对比 ST ROM bootloader</h3><span class="dep">← B11</span></div>
+      <dl>
+        <dt>理论</dt><dd>System Memory；BOOT0/BOOT1 进入；它和你写的 boot 有什么不同；RDP 2 会禁用它</dd>
+        <dt>预测题</dt><dd>BOOT0=1 时 0x00000000 映射到哪里？</dd>
+        <dt>板上现象</dt><dd>用 STM32CubeProgrammer 通过 USART1 读出 Flash</dd>
+        <dt>你亲手</dt><dd><span class="own">调试</span></dd>
+        <dt>agent</dt><dd>步骤清单</dd>
+      </dl>
+      <p class="q">地图写的是“只作对比”。要不要保留这张票？</p>
+    </article>
+
+  </div>
+</section>
+
+<footer>依据：调研 F411 bootloader 相关事实，以及 Flash 分区方案、串口升级协议与校验方式、进入升级模式的触发方式三张决策票。所有预测题的答案留到学习时再揭晓。</footer>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true,theme:matchMedia("(prefers-color-scheme: dark)").matches?"dark":"default"});</script>
+</body>
+</html>
